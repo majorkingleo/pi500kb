@@ -151,6 +151,28 @@ void ungrab(int fd) {
     close(fd);
 }
 
+void print_usage(const char *prog) {
+    std::cout << std::format(
+        "Usage: {} [OPTIONS]\n"
+        "\n"
+        "Forward the Pi 500's keyboard (and optionally mouse) to a host PC\n"
+        "via USB HID gadget.\n"
+        "\n"
+        "Keyboard selection (default: built-in only):\n"
+        "  --keyboard <path>       Forward a specific keyboard by evdev path\n"
+        "                          (can be specified multiple times)\n"
+        "  --all-keyboards         Auto-discover and forward all keyboards\n"
+        "\n"
+        "Other options:\n"
+        "  -k, --keyboard-only     Skip mouse detection\n"
+        "  -h, --help              Show this help message and exit\n"
+        "\n"
+        "Key bindings (when running):\n"
+        "  Ctrl + Raspberry        Toggle grab/release (Pi keyboard vs host)\n"
+        "  Ctrl + Shift + Raspberry  Exit the program\n",
+        prog);
+}
+
 void printhex(unsigned char *buf, size_t len) {
     for(size_t x = 0; x < len; x++) {
         std::cout << std::format("{:x} ", buf[x]);
@@ -217,7 +239,10 @@ int main(int argc, char *argv[]) {
 
     for (int i = 1; i < argc; i++) {
         std::string_view arg{argv[i]};
-        if (arg == "-k" || arg == "--keyboard-only") {
+        if (arg == "-h" || arg == "--help") {
+            print_usage(argv[0]);
+            return 0;
+        } else if (arg == "-k" || arg == "--keyboard-only") {
             keyboard_only = true;
         } else if (arg == "--all-keyboards") {
             all_keyboards = true;
