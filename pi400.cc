@@ -20,9 +20,18 @@
 #include <format>
 #include <string>
 #include <string_view>
+#include <vector>
 #include <atomic>
 #include <thread>
 #include <chrono>
+
+struct KeyboardDevice {
+    int hidraw_fd = -1;      // /dev/hidrawX for reading HID reports
+    int uinput_fd = -1;      // Grabbed evdev fd (returned by grab())
+    struct hid_buf buf{};    // HID report buffer
+    std::string evdev_path;  // evdev device path (for grab/ungrab)
+    std::string name;        // Display name for logging
+};
 
 constexpr int EVIOC_GRAB = 1;
 constexpr int EVIOC_UNGRAB = 0;
@@ -32,11 +41,9 @@ std::atomic<bool> running{false};
 std::atomic<bool> grabbed{false};
 
 int ret;
-int keyboard_fd;
+std::vector<KeyboardDevice> keyboards;
 int mouse_fd;
-int uinput_keyboard_fd;
 int uinput_mouse_fd;
-struct hid_buf keyboard_buf;
 struct hid_buf mouse_buf;
 
 static bool keyboard_only = false;
@@ -89,6 +96,47 @@ int find_hidraw_device(const char *device_type, int16_t vid, int16_t pid) {
     return -1;
 }
 
+int find_hidraw_for_evdev(const char *evdev_path) {
+    /* Open evdev device temporarily to query its VID/PID */
+    int tmp_fd = open(evdev_path, O_RDONLY);
+    if (tmp_fd == -1) return -1;
+
+    struct input_id ids{};
+    int ret_io = ioctl(tmp_fd, EVIOCGID, &ids);
+    close(tmp_fd);
+
+    if (ret_io == -1) return -1;
+
+    return find_hidraw_device("keyboard", ids.vendor, ids.product);
+}
+
+std::vector<std::string> discover_all_keyboards() {
+    std::vector<std::string> paths;
+    char devname[256] = {};
+
+    for (int i = 0; i < 32; i++) {
+        auto path = std::format("/dev/input/event{}", i);
+        int fd = open(path.c_str(), O_RDONLY);
+        if (fd == -1) continue;
+
+        if (ioctl(fd, EVIOCGNAME(sizeof(devname)), devname) >= 0) {
+            std::string name(devname);
+            /* Look for keyboard-like device names, skip mice */
+            bool is_kb = (name.find("Keyboard") != std::string::npos ||
+                          name.find("keyboard") != std::string::npos ||
+                          name.find("kbd") != std::string::npos);
+            bool is_mouse = (name.find("Mouse") != std::string::npos ||
+                             name.find("mouse") != std::string::npos);
+
+            if (is_kb && !is_mouse) {
+                paths.push_back(path);
+            }
+        }
+        close(fd);
+    }
+    return paths;
+}
+
 int grab(const char *dev) {
     std::cout << "Grabbing: " << dev << std::endl;
     int fd = open(dev, O_RDONLY);
@@ -111,14 +159,18 @@ void printhex(unsigned char *buf, size_t len) {
 }
 
 void ungrab_both() {
-    std::cout << "Releasing Keyboard and/or Mouse" << std::endl;
+    std::cout << "Releasing Keyboards and/or Mouse" << std::endl;
 
-    if(uinput_keyboard_fd > -1) {
-        ungrab(uinput_keyboard_fd);
+    for (auto& kb : keyboards) {
+        if(kb.uinput_fd > -1) {
+            ungrab(kb.uinput_fd);
+            kb.uinput_fd = -1;
+        }
     }
 
     if(uinput_mouse_fd > -1) {
         ungrab(uinput_mouse_fd);
+        uinput_mouse_fd = -1;
     }
 
     grabbed = false;
@@ -127,17 +179,17 @@ void ungrab_both() {
 }
 
 void grab_both() {
-    std::cout << "Grabbing Keyboard and/or Mouse" << std::endl;
+    std::cout << "Grabbing Keyboards and/or Mouse" << std::endl;
 
-    if(keyboard_fd > -1) {
-        uinput_keyboard_fd = grab(KEYBOARD_DEV);
+    for (auto& kb : keyboards) {
+        kb.uinput_fd = grab(kb.evdev_path.c_str());
     }
 
     if(mouse_fd > -1) {
         uinput_mouse_fd = grab(MOUSE_DEV);
     }
 
-    if (uinput_keyboard_fd > -1 || uinput_mouse_fd > -1) {
+    if (!keyboards.empty() || uinput_mouse_fd > -1) {
         grabbed = true;
     }
 
@@ -145,38 +197,73 @@ void grab_both() {
 }
 
 void send_empty_hid_reports_both() {
-    if(keyboard_fd > -1) {
 #ifndef NO_OUTPUT
-        keyboard_buf = {};
-        write(hid_output, reinterpret_cast<unsigned char *>(&keyboard_buf), KEYBOARD_HID_REPORT_SIZE + 1);
-#endif
+    for (auto& kb : keyboards) {
+        kb.buf = {};
+        write(hid_output, reinterpret_cast<unsigned char *>(&kb.buf), KEYBOARD_HID_REPORT_SIZE + 1);
     }
 
     if(mouse_fd > -1) {
-#ifndef NO_OUTPUT
         mouse_buf = {};
         write(hid_output, reinterpret_cast<unsigned char *>(&mouse_buf), MOUSE_HID_REPORT_SIZE + 1);
-#endif
     }
+#endif
 }
 
 int main(int argc, char *argv[]) {
     /* Parse command line arguments */
+    std::vector<std::string> keyboard_paths;
+    bool all_keyboards = false;
+
     for (int i = 1; i < argc; i++) {
         std::string_view arg{argv[i]};
         if (arg == "-k" || arg == "--keyboard-only") {
             keyboard_only = true;
+        } else if (arg == "--all-keyboards") {
+            all_keyboards = true;
+        } else if (arg == "--keyboard" && i + 1 < argc) {
+            keyboard_paths.emplace_back(argv[++i]);
         }
     }
 
     modprobe_libcomposite();
 
-    keyboard_buf.report_id = 1;
     mouse_buf.report_id = 2;
 
-    keyboard_fd = find_hidraw_device("keyboard", KEYBOARD_VID, KEYBOARD_PID);
-    if(keyboard_fd == -1) {
-        std::cout << "Failed to open keyboard device" << std::endl;
+    /* Determine which keyboards to forward */
+    if (all_keyboards) {
+        keyboard_paths = discover_all_keyboards();
+        std::cout << "Discovered " << keyboard_paths.size() << " keyboard(s)" << std::endl;
+    }
+
+    if (!keyboard_paths.empty()) {
+        /* User-specified or all-keyboards discovered paths */
+        for (const auto& path : keyboard_paths) {
+            int hd_fd = find_hidraw_for_evdev(path.c_str());
+            if (hd_fd == -1) {
+                std::cout << "No hidraw device found for: " << path << std::endl;
+                continue;
+            }
+            KeyboardDevice kb;
+            kb.hidraw_fd = hd_fd;
+            kb.evdev_path = path;
+            kb.buf.report_id = 1;
+            kb.name = path;
+            keyboards.push_back(kb);
+        }
+    } else {
+        /* Default: use the built-in keyboard */
+        int hd_fd = find_hidraw_device("keyboard", KEYBOARD_VID, KEYBOARD_PID);
+        if (hd_fd == -1) {
+            std::cout << "Failed to open built-in keyboard device" << std::endl;
+        } else {
+            KeyboardDevice kb;
+            kb.hidraw_fd = hd_fd;
+            kb.evdev_path = KEYBOARD_DEV;
+            kb.buf.report_id = 1;
+            kb.name = "built-in";
+            keyboards.push_back(kb);
+        }
     }
     
     if (!keyboard_only) {
@@ -189,7 +276,7 @@ int main(int argc, char *argv[]) {
         std::cout << "Mouse disabled (--keyboard-only)" << std::endl;
     }
 
-    if(mouse_fd == -1 && keyboard_fd == -1) {
+    if(mouse_fd == -1 && keyboards.empty()) {
         std::cout << "No devices to forward, bailing out!" << std::endl;
         return 1;
     }
@@ -227,30 +314,37 @@ int main(int argc, char *argv[]) {
     running = true;
     signal(SIGINT, signal_handler);
 
-    struct pollfd pollFd[2];
-    pollFd[0].fd = keyboard_fd;
-    pollFd[0].events = POLLIN;
-    pollFd[1].fd = mouse_fd;
-    pollFd[1].events = POLLIN;
+    /* Build pollfd array: all keyboards + mouse */
+    std::vector<struct pollfd> pollFd;
+    for (auto& kb : keyboards) {
+        pollFd.push_back({kb.hidraw_fd, POLLIN, 0});
+    }
+    pollFd.push_back({mouse_fd, POLLIN, 0});
 
     while (running.load()){
-        poll(pollFd, 2, -1);
-        if(keyboard_fd > -1) {
-            auto c = read(keyboard_fd, keyboard_buf.data, KEYBOARD_HID_REPORT_SIZE);
+        poll(pollFd.data(), pollFd.size(), -1);
+
+        /* Process all keyboards */
+        for (size_t ki = 0; ki < keyboards.size(); ki++) {
+            if (!(pollFd[ki].revents & POLLIN)) continue;
+
+            auto& kb = keyboards[ki];
+            auto c = read(kb.hidraw_fd, kb.buf.data, KEYBOARD_HID_REPORT_SIZE);
 
             if(c == KEYBOARD_HID_REPORT_SIZE){
-                std::cout << "K:";
-                printhex(keyboard_buf.data, KEYBOARD_HID_REPORT_SIZE);
+                std::cout << "K(" << kb.name << "):";
+                printhex(kb.buf.data, KEYBOARD_HID_REPORT_SIZE);
 
 #ifndef NO_OUTPUT
                 if(grabbed.load()) {
-                    write(hid_output, reinterpret_cast<unsigned char *>(&keyboard_buf), KEYBOARD_HID_REPORT_SIZE + 1);
+                    write(hid_output, reinterpret_cast<unsigned char *>(&kb.buf), KEYBOARD_HID_REPORT_SIZE + 1);
                     std::this_thread::sleep_for(std::chrono::microseconds(1000));
                 }
 #endif
 
                 // Trap Ctrl + Raspberry and toggle capture on/off
-                if(keyboard_buf.data[0] == 0x09){
+                // Check on all keyboards (only built-in has the Raspberry key)
+                if(kb.buf.data[0] == 0x09){
                     if(grabbed.load()) {
                         ungrab_both();
                         send_empty_hid_reports_both();
@@ -259,13 +353,18 @@ int main(int argc, char *argv[]) {
                     }
                 }
                 // Trap Ctrl + Shift + Raspberry and exit
-                if(keyboard_buf.data[0] == 0x0b){
+                if(kb.buf.data[0] == 0x0b){
                     running = false;
                     break;
                 }
             }
         }
-        if(mouse_fd > -1) {
+        if (!running.load()) break;
+
+        /* Process mouse (last entry in pollFd) */
+        size_t mouse_idx = keyboards.size();
+        if (mouse_fd > -1 && (pollFd[mouse_idx].revents & POLLIN)) {
+            mouse_buf = {};
             auto c = read(mouse_fd, mouse_buf.data, MOUSE_HID_REPORT_SIZE);
 
             if(c == MOUSE_HID_REPORT_SIZE){

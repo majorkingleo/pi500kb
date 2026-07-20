@@ -135,6 +135,29 @@ sudo systemctl enable --now pi400kb.service
 | Flag | Description |
 |---|---|
 | `-k`, `--keyboard-only` | Skip mouse detection entirely |
+| `--keyboard <path>` | Forward a specific keyboard by evdev path (repeatable) |
+| `--all-keyboards` | Auto-discover and forward all connected keyboards |
+
+If neither `--keyboard` nor `--all-keyboards` is given, only the built-in Pi 500
+keyboard (`KEYBOARD_DEV`) is forwarded.
+
+### Keyboard Selection Examples
+
+```bash
+# Forward a specific external keyboard
+sudo build/pi400kb --keyboard /dev/input/by-id/usb-My_Keyboard-event-kbd
+
+# Forward multiple specific keyboards
+sudo build/pi400kb \
+    --keyboard /dev/input/by-id/usb-Keyboard_A-event-kbd \
+    --keyboard /dev/input/by-id/usb-Keyboard_B-event-kbd
+
+# Auto-discover all keyboards (built-in + external)
+sudo build/pi400kb --all-keyboards
+
+# All keyboards, no mouse
+sudo build/pi400kb --all-keyboards --keyboard-only
+```
 
 ## Troubleshooting
 
