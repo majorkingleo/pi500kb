@@ -32,6 +32,8 @@ int uinput_mouse_fd;
 struct hid_buf keyboard_buf;
 struct hid_buf mouse_buf;
 
+static int keyboard_only = 0;
+
 void signal_handler(int dummy) {
     running = 0;
 }
@@ -154,7 +156,14 @@ void send_empty_hid_reports_both() {
     }
 }
 
-int main() {
+int main(int argc, char *argv[]) {
+    /* Parse command line arguments */
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-k") == 0 || strcmp(argv[i], "--keyboard-only") == 0) {
+            keyboard_only = 1;
+        }
+    }
+
     modprobe_libcomposite();
 
     keyboard_buf.report_id = 1;
@@ -165,9 +174,14 @@ int main() {
         printf("Failed to open keyboard device\n");
     }
     
-    mouse_fd = find_hidraw_device("mouse", MOUSE_VID, MOUSE_PID);
-    if(mouse_fd == -1) {
-        printf("Failed to open mouse device\n");
+    if (!keyboard_only) {
+        mouse_fd = find_hidraw_device("mouse", MOUSE_VID, MOUSE_PID);
+        if(mouse_fd == -1) {
+            printf("No mouse device found (keyboard-only mode)\n");
+        }
+    } else {
+        mouse_fd = -1;
+        printf("Mouse disabled (--keyboard-only)\n");
     }
 
     if(mouse_fd == -1 && keyboard_fd == -1) {
@@ -186,12 +200,21 @@ int main() {
 
 
 #ifndef NO_OUTPUT
+    /* Find the first available /dev/hidg* device */
     do {
-        hid_output = open("/dev/hidg0", O_WRONLY | O_NDELAY);
+        for (int i = 0; i < 16; i++) {
+            char devpath[32];
+            snprintf(devpath, sizeof(devpath), "/dev/hidg%d", i);
+            hid_output = open(devpath, O_WRONLY | O_NDELAY);
+            if (hid_output != -1) {
+                printf("Opened %s for output\n", devpath);
+                break;
+            }
+        }
     } while (hid_output == -1 && errno == EINTR);
 
     if (hid_output == -1){
-        printf("Error opening /dev/hidg0 for writing.\n");
+        printf("Error opening /dev/hidg* for writing.\n");
         return 1;
     }
 #endif

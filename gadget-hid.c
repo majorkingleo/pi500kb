@@ -1,6 +1,9 @@
 #include "gadget-hid.h"
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <dirent.h>
 #include <linux/usb/ch9.h>
 #include <usbg/usbg.h>
 #include <usbg/function/hid.h>
@@ -117,7 +120,84 @@ int initUSB() {
         goto out1;
     }
 
-    usbg_ret = usbg_create_gadget(s, "g1", &g_attrs, &g_strs, &g);
+    /* If a legacy g_* module has claimed the UDC, unload it */
+    {
+        usbg_udc *first_udc = usbg_get_first_udc(s);
+        /* usbg_udc is opaque; check if the UDC is busy by trying to
+         * see if there's a legacy gadget bound. We detect this by
+         * checking if any g_* module is loaded. */
+        FILE *fp = fopen("/proc/modules", "r");
+        if (fp) {
+            char line[256];
+            int need_reinit = 0;
+            while (fgets(line, sizeof(line), fp)) {
+                if (strncmp(line, "g_", 2) == 0) {
+                    char modname[64];
+                    sscanf(line, "%63s", modname);
+                    fprintf(stderr, "Legacy gadget module '%s' is occupying "
+                            "the UDC, unloading it...\n", modname);
+                    char cmd[128];
+                    snprintf(cmd, sizeof(cmd), "rmmod %s 2>/dev/null", modname);
+                    system(cmd);
+                    need_reinit = 1;
+                }
+            }
+            fclose(fp);
+            if (need_reinit) {
+                usbg_cleanup(s);
+                usbg_ret = usbg_init("/sys/kernel/config", &s);
+                if (usbg_ret != USBG_SUCCESS) {
+                    fprintf(stderr, "Error on usbg re-init\n");
+                    goto out1;
+                }
+            }
+        }
+    }
+
+    /* Clean up any existing gadget from a previous run */
+    {
+        /* Also clean up "g1" which rpi-usb-gadget may have created */
+        const char *names[] = {"pi400kb", "g1"};
+        for (int n = 0; n < 2; n++) {
+            usbg_gadget *existing_g = usbg_get_gadget(s, names[n]);
+            if (existing_g != NULL) {
+                fprintf(stderr, "Cleaning up existing gadget '%s'\n", names[n]);
+
+                /* Disable (unbind UDC) and check return */
+                int clean_ret = usbg_disable_gadget(existing_g);
+                if (clean_ret != USBG_SUCCESS) {
+                    fprintf(stderr, "usbg_disable_gadget failed (%s), "
+                            "forcing UDC unbind via configfs\n",
+                            usbg_strerror(clean_ret));
+                    /* Fallback: write directly to configfs to unbind the UDC */
+                    char udc_path[512];
+                    snprintf(udc_path, sizeof(udc_path),
+                             "/sys/kernel/config/usb_gadget/%s/UDC", names[n]);
+                    FILE *f = fopen(udc_path, "w");
+                    if (f) {
+                        fprintf(f, "\n");
+                        fclose(f);
+                    }
+                }
+
+                /* Remove the gadget recursively */
+                clean_ret = usbg_rm_gadget(existing_g, USBG_RM_RECURSE);
+                if (clean_ret != USBG_SUCCESS) {
+                    fprintf(stderr, "usbg_rm_gadget failed (%s), "
+                            "forcing removal via configfs\n",
+                            usbg_strerror(clean_ret));
+                    /* Fallback: remove the configfs directory */
+                    char cmd[256];
+                    snprintf(cmd, sizeof(cmd),
+                             "rm -rf /sys/kernel/config/usb_gadget/%s 2>/dev/null",
+                             names[n]);
+                    system(cmd);
+                }
+            }
+        }
+    }
+
+    usbg_ret = usbg_create_gadget(s, "pi400kb", &g_attrs, &g_strs, &g);
     if (usbg_ret != USBG_SUCCESS) {
         fprintf(stderr, "Error creating gadget\n");
         fprintf(stderr, "Error: %s : %s\n", usbg_error_name(usbg_ret),
@@ -149,6 +229,28 @@ int initUSB() {
         goto out2;
     }
 
+    /* Check if there are any UDCs available before enabling */
+    {
+        DIR *udc_dir = opendir("/sys/class/udc");
+        if (udc_dir) {
+            struct dirent *entry;
+            int udc_count = 0;
+            while ((entry = readdir(udc_dir)) != NULL) {
+                if (entry->d_name[0] != '.') udc_count++;
+            }
+            closedir(udc_dir);
+
+            if (udc_count == 0) {
+                fprintf(stderr, "\n*** NO USB DEVICE CONTROLLER (UDC) FOUND ***\n");
+                fprintf(stderr, "Your Pi's USB port is not configured for gadget mode.\n");
+                fprintf(stderr, "Add this to /boot/firmware/config.txt and reboot:\n");
+                fprintf(stderr, "  dtoverlay=dwc2,dr_mode=peripheral\n\n");
+                usbg_ret = USBG_ERROR_OTHER_ERROR;
+                goto out2;
+            }
+        }
+    }
+
     usbg_ret = usbg_enable_gadget(g, DEFAULT_UDC);
     if (usbg_ret != USBG_SUCCESS) {
         fprintf(stderr, "Error enabling gadget\n");
@@ -157,9 +259,30 @@ int initUSB() {
         goto out2;
     }
 
+    /* Trigger soft_connect to ensure the gadget is visible to the host.
+     * On DWC2/RP1, the gadget may need an explicit connect pulse. */
+    {
+        const char *udc_name = usbg_get_udc_name(
+            usbg_get_gadget_udc(g));
+        if (udc_name) {
+            char sc_path[256];
+            snprintf(sc_path, sizeof(sc_path),
+                     "/sys/class/udc/%s/soft_connect", udc_name);
+            FILE *f = fopen(sc_path, "w");
+            if (f) {
+                fprintf(f, "connect\n");
+                fclose(f);
+            }
+        }
+    }
+
+    /* Success — keep s alive for later cleanup */
+    return USBG_SUCCESS;
+
 out2:
     usbg_cleanup(s);
     s = NULL;
+    g = NULL;
 
 out1:
     return usbg_ret;
