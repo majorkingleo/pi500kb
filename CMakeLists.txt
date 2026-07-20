@@ -14,15 +14,15 @@ if(NOT HOOK_PATH)
 endif()
 
 if(NOT KEYBOARD_VID)
-    set(KEYBOARD_VID "0x04d9" CACHE STRING "Vendor ID for keyboard")
+    set(KEYBOARD_VID "0x2e8a" CACHE STRING "Vendor ID for keyboard")
 endif()
 
 if(NOT KEYBOARD_PID)
-    set(KEYBOARD_PID "0x0007" CACHE STRING "Product ID for keyboard")
+    set(KEYBOARD_PID "0x0010" CACHE STRING "Product ID for keyboard")
 endif()
 
 if(NOT KEYBOARD_DEV)
-    set(KEYBOARD_DEV "/dev/input/by-id/usb-_Raspberry_Pi_Internal_Keyboard-event-kbd" CACHE STRING "Device path for keyboard")
+    set(KEYBOARD_DEV "/dev/input/by-id/usb-Raspberry_Pi_Ltd_Pi_500_Keyboard-event-kbd" CACHE STRING "Device path for keyboard")
 endif()
 
 
