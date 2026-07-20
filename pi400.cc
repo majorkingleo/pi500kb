@@ -6,23 +6,30 @@
 #include <linux/hidraw.h>
 #include <linux/input.h>
 #include <signal.h>
-#include <errno.h>
-#include <stdio.h>
+#include <cerrno>
+#include <cstdio>
 #include <fcntl.h>
-#include <stdio.h>
 #include <poll.h>
 #include <unistd.h>
-#include <string.h>
-#include <stdlib.h>
+#include <cstring>
+#include <cstdlib>
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#define EVIOC_GRAB 1
-#define EVIOC_UNGRAB 0
+#include <iostream>
+#include <format>
+#include <string>
+#include <string_view>
+#include <atomic>
+#include <thread>
+#include <chrono>
+
+constexpr int EVIOC_GRAB = 1;
+constexpr int EVIOC_UNGRAB = 0;
 
 int hid_output;
-volatile int running = 0;
-volatile int grabbed = 0;
+std::atomic<bool> running{false};
+std::atomic<bool> grabbed{false};
 
 int ret;
 int keyboard_fd;
@@ -32,10 +39,10 @@ int uinput_mouse_fd;
 struct hid_buf keyboard_buf;
 struct hid_buf mouse_buf;
 
-static int keyboard_only = 0;
+static bool keyboard_only = false;
 
-void signal_handler(int dummy) {
-    running = 0;
+void signal_handler(int /*dummy*/) {
+    running = false;
 }
 
 bool modprobe_libcomposite() {
@@ -45,38 +52,34 @@ bool modprobe_libcomposite() {
 
     if (pid < 0) return false;
     if (pid == 0) {
-        const char* const argv[] = {"modprobe", "libcomposite", NULL};
-        execv("/usr/sbin/modprobe", (char *const *)argv);
-        exit(0);
+        const char* const argv[] = {"modprobe", "libcomposite", nullptr};
+        execv("/usr/sbin/modprobe", const_cast<char *const *>(argv));
+        std::exit(0);
     }
-    waitpid(pid, NULL, 0);
+    waitpid(pid, nullptr, 0);
     return true;
 }
 
 bool trigger_hook() {
-    char buf[4096];
-    snprintf(buf, sizeof(buf), "%s %u", HOOK_PATH, grabbed ? 1u : 0u);
-    system(buf);
+    auto cmd = std::format("{} {}", HOOK_PATH, grabbed.load() ? 1u : 0u);
+    std::system(cmd.c_str());
     return true;
 }
 
 int find_hidraw_device(const char *device_type, int16_t vid, int16_t pid) {
-    int fd;
-    int ret;
     struct hidraw_devinfo hidinfo;
-    char path[20];
 
     for(int x = 0; x < 16; x++){
-        sprintf(path, "/dev/hidraw%d", x);
+        auto path = std::format("/dev/hidraw{}", x);
 
-        if ((fd = open(path, O_RDWR | O_NONBLOCK)) == -1) {
+        int fd = open(path.c_str(), O_RDWR | O_NONBLOCK);
+        if (fd == -1) {
             continue;
         }
 
-        ret = ioctl(fd, HIDIOCGRAWINFO, &hidinfo);
-
-        if(hidinfo.vendor == vid && hidinfo.product == pid) {
-            printf("Found %s at: %s\n", device_type, path);
+        if (ioctl(fd, HIDIOCGRAWINFO, &hidinfo) == 0 &&
+            hidinfo.vendor == vid && hidinfo.product == pid) {
+            std::cout << "Found " << device_type << " at: " << path << std::endl;
             return fd;
         }
 
@@ -87,10 +90,10 @@ int find_hidraw_device(const char *device_type, int16_t vid, int16_t pid) {
 }
 
 int grab(const char *dev) {
-    printf("Grabbing: %s\n", dev);
+    std::cout << "Grabbing: " << dev << std::endl;
     int fd = open(dev, O_RDONLY);
     ioctl(fd, EVIOCGRAB, EVIOC_UNGRAB);
-    usleep(500000);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     ioctl(fd, EVIOCGRAB, EVIOC_GRAB);
     return fd;
 }
@@ -101,15 +104,14 @@ void ungrab(int fd) {
 }
 
 void printhex(unsigned char *buf, size_t len) {
-    for(int x = 0; x < len; x++)
-    {
-        printf("%x ", buf[x]);
+    for(size_t x = 0; x < len; x++) {
+        std::cout << std::format("{:x} ", buf[x]);
     }
-    printf("\n");
+    std::cout << std::endl;
 }
 
 void ungrab_both() {
-    printf("Releasing Keyboard and/or Mouse\n");
+    std::cout << "Releasing Keyboard and/or Mouse" << std::endl;
 
     if(uinput_keyboard_fd > -1) {
         ungrab(uinput_keyboard_fd);
@@ -119,13 +121,13 @@ void ungrab_both() {
         ungrab(uinput_mouse_fd);
     }
 
-    grabbed = 0;
+    grabbed = false;
 
     trigger_hook();
 }
 
 void grab_both() {
-    printf("Grabbing Keyboard and/or Mouse\n");
+    std::cout << "Grabbing Keyboard and/or Mouse" << std::endl;
 
     if(keyboard_fd > -1) {
         uinput_keyboard_fd = grab(KEYBOARD_DEV);
@@ -136,7 +138,7 @@ void grab_both() {
     }
 
     if (uinput_keyboard_fd > -1 || uinput_mouse_fd > -1) {
-        grabbed = 1;
+        grabbed = true;
     }
 
     trigger_hook();
@@ -145,15 +147,15 @@ void grab_both() {
 void send_empty_hid_reports_both() {
     if(keyboard_fd > -1) {
 #ifndef NO_OUTPUT
-        memset(keyboard_buf.data, 0, KEYBOARD_HID_REPORT_SIZE);
-        write(hid_output, (unsigned char *)&keyboard_buf, KEYBOARD_HID_REPORT_SIZE + 1);
+        keyboard_buf = {};
+        write(hid_output, reinterpret_cast<unsigned char *>(&keyboard_buf), KEYBOARD_HID_REPORT_SIZE + 1);
 #endif
     }
 
     if(mouse_fd > -1) {
 #ifndef NO_OUTPUT
-        memset(mouse_buf.data, 0, MOUSE_HID_REPORT_SIZE);
-        write(hid_output, (unsigned char *)&mouse_buf, MOUSE_HID_REPORT_SIZE + 1);
+        mouse_buf = {};
+        write(hid_output, reinterpret_cast<unsigned char *>(&mouse_buf), MOUSE_HID_REPORT_SIZE + 1);
 #endif
     }
 }
@@ -161,8 +163,9 @@ void send_empty_hid_reports_both() {
 int main(int argc, char *argv[]) {
     /* Parse command line arguments */
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-k") == 0 || strcmp(argv[i], "--keyboard-only") == 0) {
-            keyboard_only = 1;
+        std::string_view arg{argv[i]};
+        if (arg == "-k" || arg == "--keyboard-only") {
+            keyboard_only = true;
         }
     }
 
@@ -173,21 +176,21 @@ int main(int argc, char *argv[]) {
 
     keyboard_fd = find_hidraw_device("keyboard", KEYBOARD_VID, KEYBOARD_PID);
     if(keyboard_fd == -1) {
-        printf("Failed to open keyboard device\n");
+        std::cout << "Failed to open keyboard device" << std::endl;
     }
     
     if (!keyboard_only) {
         mouse_fd = find_hidraw_device("mouse", MOUSE_VID, MOUSE_PID);
         if(mouse_fd == -1) {
-            printf("No mouse device found (keyboard-only mode)\n");
+            std::cout << "No mouse device found (keyboard-only mode)" << std::endl;
         }
     } else {
         mouse_fd = -1;
-        printf("Mouse disabled (--keyboard-only)\n");
+        std::cout << "Mouse disabled (--keyboard-only)" << std::endl;
     }
 
     if(mouse_fd == -1 && keyboard_fd == -1) {
-        printf("No devices to forward, bailing out!\n");
+        std::cout << "No devices to forward, bailing out!" << std::endl;
         return 1;
     }
 
@@ -205,24 +208,23 @@ int main(int argc, char *argv[]) {
     /* Find the first available /dev/hidg* device */
     do {
         for (int i = 0; i < 16; i++) {
-            char devpath[32];
-            snprintf(devpath, sizeof(devpath), "/dev/hidg%d", i);
-            hid_output = open(devpath, O_WRONLY | O_NDELAY);
+            auto devpath = std::format("/dev/hidg{}", i);
+            hid_output = open(devpath.c_str(), O_WRONLY | O_NDELAY);
             if (hid_output != -1) {
-                printf("Opened %s for output\n", devpath);
+                std::cout << "Opened " << devpath << " for output" << std::endl;
                 break;
             }
         }
     } while (hid_output == -1 && errno == EINTR);
 
     if (hid_output == -1){
-        printf("Error opening /dev/hidg* for writing.\n");
+        std::cout << "Error opening /dev/hidg* for writing." << std::endl;
         return 1;
     }
 #endif
 
-    printf("Running...\n");
-    running = 1;
+    std::cout << "Running..." << std::endl;
+    running = true;
     signal(SIGINT, signal_handler);
 
     struct pollfd pollFd[2];
@@ -231,25 +233,25 @@ int main(int argc, char *argv[]) {
     pollFd[1].fd = mouse_fd;
     pollFd[1].events = POLLIN;
 
-    while (running){
+    while (running.load()){
         poll(pollFd, 2, -1);
         if(keyboard_fd > -1) {
-            int c = read(keyboard_fd, keyboard_buf.data, KEYBOARD_HID_REPORT_SIZE);
+            auto c = read(keyboard_fd, keyboard_buf.data, KEYBOARD_HID_REPORT_SIZE);
 
             if(c == KEYBOARD_HID_REPORT_SIZE){
-                printf("K:");
+                std::cout << "K:";
                 printhex(keyboard_buf.data, KEYBOARD_HID_REPORT_SIZE);
 
 #ifndef NO_OUTPUT
-                if(grabbed) {
-                    write(hid_output, (unsigned char *)&keyboard_buf, KEYBOARD_HID_REPORT_SIZE + 1);
-                    usleep(1000);
+                if(grabbed.load()) {
+                    write(hid_output, reinterpret_cast<unsigned char *>(&keyboard_buf), KEYBOARD_HID_REPORT_SIZE + 1);
+                    std::this_thread::sleep_for(std::chrono::microseconds(1000));
                 }
 #endif
 
                 // Trap Ctrl + Raspberry and toggle capture on/off
                 if(keyboard_buf.data[0] == 0x09){
-                    if(grabbed) {
+                    if(grabbed.load()) {
                         ungrab_both();
                         send_empty_hid_reports_both();
                     } else {
@@ -258,22 +260,22 @@ int main(int argc, char *argv[]) {
                 }
                 // Trap Ctrl + Shift + Raspberry and exit
                 if(keyboard_buf.data[0] == 0x0b){
-                    running = 0;
+                    running = false;
                     break;
                 }
             }
         }
         if(mouse_fd > -1) {
-            int c = read(mouse_fd, mouse_buf.data, MOUSE_HID_REPORT_SIZE);
+            auto c = read(mouse_fd, mouse_buf.data, MOUSE_HID_REPORT_SIZE);
 
             if(c == MOUSE_HID_REPORT_SIZE){
-                printf("M:");
+                std::cout << "M:";
                 printhex(mouse_buf.data, MOUSE_HID_REPORT_SIZE);
 
 #ifndef NO_OUTPUT
-                if(grabbed) {
-                    write(hid_output, (unsigned char *)&mouse_buf, MOUSE_HID_REPORT_SIZE + 1);
-                    usleep(1000);
+                if(grabbed.load()) {
+                    write(hid_output, reinterpret_cast<unsigned char *>(&mouse_buf), MOUSE_HID_REPORT_SIZE + 1);
+                    std::this_thread::sleep_for(std::chrono::microseconds(1000));
                 }
 #endif
             }
@@ -284,7 +286,7 @@ int main(int argc, char *argv[]) {
     send_empty_hid_reports_both();
 
 #ifndef NO_OUTPUT
-    printf("Cleanup USB\n");
+    std::cout << "Cleanup USB" << std::endl;
     cleanupUSB();
 #endif
 
