@@ -1,12 +1,19 @@
 #include "gadget-hid.h"
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <dirent.h>
+#include <cerrno>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <linux/usb/ch9.h>
 #include <usbg/usbg.h>
 #include <usbg/function/hid.h>
+
+#include <iostream>
+#include <format>
+#include <string>
+#include <string_view>
+#include <fstream>
+#include <filesystem>
+#include <array>
 
 usbg_state *s;
 usbg_gadget *g;
@@ -93,13 +100,13 @@ int initUSB() {
     };
 
     struct usbg_gadget_strs g_strs = {
-        .manufacturer = "Gadgetoid", /* Manufacturer */
-        .product = "Pi400KB",        /* Product string */
-        .serial = "0123456789"       /* Serial number */
+        .manufacturer = const_cast<char *>("Gadgetoid"), /* Manufacturer */
+        .product = const_cast<char *>("Pi400KB"),        /* Product string */
+        .serial = const_cast<char *>("0123456789")       /* Serial number */
     };
 
     struct usbg_config_strs c_strs = {
-        .configuration = "1xHID"
+        .configuration = const_cast<char *>("1xHID")
     };
 
     struct usbg_f_hid_attrs f_attrs = {
@@ -114,9 +121,10 @@ int initUSB() {
 
     usbg_ret = usbg_init("/sys/kernel/config", &s);
     if (usbg_ret != USBG_SUCCESS) {
-        fprintf(stderr, "Error on usbg init\n");
-        fprintf(stderr, "Error: %s : %s\n", usbg_error_name((usbg_error)usbg_ret),
-                usbg_strerror((usbg_error)usbg_ret));
+        std::cerr << "Error on usbg init" << std::endl;
+        std::cerr << std::format("Error: {} : {}\n",
+            usbg_error_name(static_cast<usbg_error>(usbg_ret)),
+            usbg_strerror(static_cast<usbg_error>(usbg_ret)));
         goto out1;
     }
 
@@ -126,28 +134,26 @@ int initUSB() {
         /* usbg_udc is opaque; check if the UDC is busy by trying to
          * see if there's a legacy gadget bound. We detect this by
          * checking if any g_* module is loaded. */
-        FILE *fp = fopen("/proc/modules", "r");
-        if (fp) {
-            char line[256];
-            int need_reinit = 0;
-            while (fgets(line, sizeof(line), fp)) {
-                if (strncmp(line, "g_", 2) == 0) {
-                    char modname[64];
-                    sscanf(line, "%63s", modname);
-                    fprintf(stderr, "Legacy gadget module '%s' is occupying "
+        std::ifstream modules_file("/proc/modules");
+        if (modules_file.is_open()) {
+            std::string line;
+            bool need_reinit = false;
+            while (std::getline(modules_file, line)) {
+                if (line.starts_with("g_")) {
+                    auto modname = line.substr(0, line.find(' '));
+                    std::cerr << std::format("Legacy gadget module '{}' is occupying "
                             "the UDC, unloading it...\n", modname);
-                    char cmd[128];
-                    snprintf(cmd, sizeof(cmd), "rmmod %s 2>/dev/null", modname);
-                    system(cmd);
-                    need_reinit = 1;
+                    auto cmd = std::format("rmmod {} 2>/dev/null", modname);
+                    std::system(cmd.c_str());
+                    need_reinit = true;
                 }
             }
-            fclose(fp);
+            modules_file.close();
             if (need_reinit) {
                 usbg_cleanup(s);
                 usbg_ret = usbg_init("/sys/kernel/config", &s);
                 if (usbg_ret != USBG_SUCCESS) {
-                    fprintf(stderr, "Error on usbg re-init\n");
+                    std::cerr << "Error on usbg re-init" << std::endl;
                     goto out1;
                 }
             }
@@ -157,41 +163,36 @@ int initUSB() {
     /* Clean up any existing gadget from a previous run */
     {
         /* Also clean up "g1" which rpi-usb-gadget may have created */
-        const char *names[] = {"pi400kb", "g1"};
-        for (int n = 0; n < 2; n++) {
-            usbg_gadget *existing_g = usbg_get_gadget(s, names[n]);
-            if (existing_g != NULL) {
-                fprintf(stderr, "Cleaning up existing gadget '%s'\n", names[n]);
+        const std::array names{"pi400kb", "g1"};
+        for (const auto& name : names) {
+            usbg_gadget *existing_g = usbg_get_gadget(s, name);
+            if (existing_g != nullptr) {
+                std::cerr << std::format("Cleaning up existing gadget '{}'\n", name);
 
                 /* Disable (unbind UDC) and check return */
                 int clean_ret = usbg_disable_gadget(existing_g);
                 if (clean_ret != USBG_SUCCESS) {
-                    fprintf(stderr, "usbg_disable_gadget failed (%s), "
+                    std::cerr << std::format("usbg_disable_gadget failed ({}), "
                             "forcing UDC unbind via configfs\n",
-                            usbg_strerror((usbg_error)clean_ret));
+                            usbg_strerror(static_cast<usbg_error>(clean_ret)));
                     /* Fallback: write directly to configfs to unbind the UDC */
-                    char udc_path[512];
-                    snprintf(udc_path, sizeof(udc_path),
-                             "/sys/kernel/config/usb_gadget/%s/UDC", names[n]);
-                    FILE *f = fopen(udc_path, "w");
-                    if (f) {
-                        fprintf(f, "\n");
-                        fclose(f);
+                    auto udc_path = std::format("/sys/kernel/config/usb_gadget/{}/UDC", name);
+                    std::ofstream udc_file(udc_path);
+                    if (udc_file.is_open()) {
+                        udc_file << "\n";
+                        udc_file.close();
                     }
                 }
 
                 /* Remove the gadget recursively */
                 clean_ret = usbg_rm_gadget(existing_g, USBG_RM_RECURSE);
                 if (clean_ret != USBG_SUCCESS) {
-                    fprintf(stderr, "usbg_rm_gadget failed (%s), "
+                    std::cerr << std::format("usbg_rm_gadget failed ({}), "
                             "forcing removal via configfs\n",
-                            usbg_strerror((usbg_error)clean_ret));
+                            usbg_strerror(static_cast<usbg_error>(clean_ret)));
                     /* Fallback: remove the configfs directory */
-                    char cmd[256];
-                    snprintf(cmd, sizeof(cmd),
-                             "rm -rf /sys/kernel/config/usb_gadget/%s 2>/dev/null",
-                             names[n]);
-                    system(cmd);
+                    auto cmd = std::format("rm -rf /sys/kernel/config/usb_gadget/{} 2>/dev/null", name);
+                    std::system(cmd.c_str());
                 }
             }
         }
@@ -199,52 +200,57 @@ int initUSB() {
 
     usbg_ret = usbg_create_gadget(s, "pi400kb", &g_attrs, &g_strs, &g);
     if (usbg_ret != USBG_SUCCESS) {
-        fprintf(stderr, "Error creating gadget\n");
-        fprintf(stderr, "Error: %s : %s\n", usbg_error_name((usbg_error)usbg_ret),
-                usbg_strerror((usbg_error)usbg_ret));
+        std::cerr << "Error creating gadget" << std::endl;
+        std::cerr << std::format("Error: {} : {}\n",
+            usbg_error_name(static_cast<usbg_error>(usbg_ret)),
+            usbg_strerror(static_cast<usbg_error>(usbg_ret)));
         goto out2;
     }
 
     usbg_ret = usbg_create_function(g, USBG_F_HID, "usb0", &f_attrs, &f_hid);
     if (usbg_ret != USBG_SUCCESS) {
-        fprintf(stderr, "Error creating function: USBG_F_HID\n");
-        fprintf(stderr, "Error: %s : %s\n", usbg_error_name((usbg_error)usbg_ret),
-                usbg_strerror((usbg_error)usbg_ret));
+        std::cerr << "Error creating function: USBG_F_HID" << std::endl;
+        std::cerr << std::format("Error: {} : {}\n",
+            usbg_error_name(static_cast<usbg_error>(usbg_ret)),
+            usbg_strerror(static_cast<usbg_error>(usbg_ret)));
         goto out2;
     }
 
-    usbg_ret = usbg_create_config(g, 1, "config", NULL, &c_strs, &c);
+    usbg_ret = usbg_create_config(g, 1, "config", nullptr, &c_strs, &c);
     if (usbg_ret != USBG_SUCCESS) {
-        fprintf(stderr, "Error creating config\n");
-        fprintf(stderr, "Error: %s : %s\n", usbg_error_name((usbg_error)usbg_ret),
-                usbg_strerror((usbg_error)usbg_ret));
+        std::cerr << "Error creating config" << std::endl;
+        std::cerr << std::format("Error: {} : {}\n",
+            usbg_error_name(static_cast<usbg_error>(usbg_ret)),
+            usbg_strerror(static_cast<usbg_error>(usbg_ret)));
         goto out2;
     }
 
     usbg_ret = usbg_add_config_function(c, "keyboard", f_hid);
     if (usbg_ret != USBG_SUCCESS) {
-        fprintf(stderr, "Error adding function: keyboard\n");
-        fprintf(stderr, "Error: %s : %s\n", usbg_error_name((usbg_error)usbg_ret),
-                usbg_strerror((usbg_error)usbg_ret));
+        std::cerr << "Error adding function: keyboard" << std::endl;
+        std::cerr << std::format("Error: {} : {}\n",
+            usbg_error_name(static_cast<usbg_error>(usbg_ret)),
+            usbg_strerror(static_cast<usbg_error>(usbg_ret)));
         goto out2;
     }
 
     /* Check if there are any UDCs available before enabling */
     {
-        DIR *udc_dir = opendir("/sys/class/udc");
-        if (udc_dir) {
-            struct dirent *entry;
+        namespace fs = std::filesystem;
+        fs::path udc_dir("/sys/class/udc");
+        if (fs::is_directory(udc_dir)) {
             int udc_count = 0;
-            while ((entry = readdir(udc_dir)) != NULL) {
-                if (entry->d_name[0] != '.') udc_count++;
+            for (const auto& entry : fs::directory_iterator(udc_dir)) {
+                if (entry.path().filename().string()[0] != '.') {
+                    udc_count++;
+                }
             }
-            closedir(udc_dir);
 
             if (udc_count == 0) {
-                fprintf(stderr, "\n*** NO USB DEVICE CONTROLLER (UDC) FOUND ***\n");
-                fprintf(stderr, "Your Pi's USB port is not configured for gadget mode.\n");
-                fprintf(stderr, "Add this to /boot/firmware/config.txt and reboot:\n");
-                fprintf(stderr, "  dtoverlay=dwc2,dr_mode=peripheral\n\n");
+                std::cerr << "\n*** NO USB DEVICE CONTROLLER (UDC) FOUND ***" << std::endl;
+                std::cerr << "Your Pi's USB port is not configured for gadget mode." << std::endl;
+                std::cerr << "Add this to /boot/firmware/config.txt and reboot:" << std::endl;
+                std::cerr << "  dtoverlay=dwc2,dr_mode=peripheral" << std::endl;
                 usbg_ret = USBG_ERROR_OTHER_ERROR;
                 goto out2;
             }
@@ -253,9 +259,10 @@ int initUSB() {
 
     usbg_ret = usbg_enable_gadget(g, DEFAULT_UDC);
     if (usbg_ret != USBG_SUCCESS) {
-        fprintf(stderr, "Error enabling gadget\n");
-        fprintf(stderr, "Error: %s : %s\n", usbg_error_name((usbg_error)usbg_ret),
-                usbg_strerror((usbg_error)usbg_ret));
+        std::cerr << "Error enabling gadget" << std::endl;
+        std::cerr << std::format("Error: {} : {}\n",
+            usbg_error_name(static_cast<usbg_error>(usbg_ret)),
+            usbg_strerror(static_cast<usbg_error>(usbg_ret)));
         goto out2;
     }
 
@@ -265,13 +272,11 @@ int initUSB() {
         const char *udc_name = usbg_get_udc_name(
             usbg_get_gadget_udc(g));
         if (udc_name) {
-            char sc_path[256];
-            snprintf(sc_path, sizeof(sc_path),
-                     "/sys/class/udc/%s/soft_connect", udc_name);
-            FILE *f = fopen(sc_path, "w");
-            if (f) {
-                fprintf(f, "connect\n");
-                fclose(f);
+            auto sc_path = std::format("/sys/class/udc/{}/soft_connect", udc_name);
+            std::ofstream sc_file(sc_path);
+            if (sc_file.is_open()) {
+                sc_file << "connect\n";
+                sc_file.close();
             }
         }
     }
@@ -282,7 +287,7 @@ int initUSB() {
 out2:
     usbg_cleanup(s);
     s = NULL;
-    g = NULL;
+    g = nullptr;
 
 out1:
     return usbg_ret;
