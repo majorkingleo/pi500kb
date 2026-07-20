@@ -45,20 +45,22 @@ bool modprobe_libcomposite() {
 
     if (pid < 0) return false;
     if (pid == 0) {
-        char* const argv[] = {"modprobe", "libcomposite", NULL};
-        execv("/usr/sbin/modprobe", argv);
+        const char* const argv[] = {"modprobe", "libcomposite", NULL};
+        execv("/usr/sbin/modprobe", (char *const *)argv);
         exit(0);
     }
     waitpid(pid, NULL, 0);
+    return true;
 }
 
 bool trigger_hook() {
     char buf[4096];
     snprintf(buf, sizeof(buf), "%s %u", HOOK_PATH, grabbed ? 1u : 0u);
     system(buf);
+    return true;
 }
 
-int find_hidraw_device(char *device_type, int16_t vid, int16_t pid) {
+int find_hidraw_device(const char *device_type, int16_t vid, int16_t pid) {
     int fd;
     int ret;
     struct hidraw_devinfo hidinfo;
@@ -84,7 +86,7 @@ int find_hidraw_device(char *device_type, int16_t vid, int16_t pid) {
     return -1;
 }
 
-int grab(char *dev) {
+int grab(const char *dev) {
     printf("Grabbing: %s\n", dev);
     int fd = open(dev, O_RDONLY);
     ioctl(fd, EVIOCGRAB, EVIOC_UNGRAB);

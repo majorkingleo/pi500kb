@@ -5,5 +5,4 @@
 #endif
 
 int initUSB();
-int main();
 void sendHIDReport();

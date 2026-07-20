@@ -2,10 +2,9 @@ cmake_minimum_required(VERSION 3.9)
 
 project(pi400kb)
 
-# for asprintf
-set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_EXTENSIONS ON)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS ON)
 add_compile_definitions(_GNU_SOURCE)
 
 option(NO_OUTPUT "Disable USB HID output" OFF)
@@ -84,8 +83,8 @@ target_link_libraries(libusbgx INTERFACE config)
 
 add_executable(
     pi400kb
-    pi400.c
-    gadget-hid.c
+    pi400.cc
+    gadget-hid.cc
 )
 
 target_compile_definitions(pi400kb PRIVATE

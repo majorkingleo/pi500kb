@@ -93,9 +93,9 @@ int initUSB() {
     };
 
     struct usbg_gadget_strs g_strs = {
-        .serial = "0123456789",      /* Serial number */
         .manufacturer = "Gadgetoid", /* Manufacturer */
-        .product = "Pi400KB"         /* Product string */
+        .product = "Pi400KB",        /* Product string */
+        .serial = "0123456789"       /* Serial number */
     };
 
     struct usbg_config_strs c_strs = {
@@ -115,8 +115,8 @@ int initUSB() {
     usbg_ret = usbg_init("/sys/kernel/config", &s);
     if (usbg_ret != USBG_SUCCESS) {
         fprintf(stderr, "Error on usbg init\n");
-        fprintf(stderr, "Error: %s : %s\n", usbg_error_name(usbg_ret),
-                usbg_strerror(usbg_ret));
+        fprintf(stderr, "Error: %s : %s\n", usbg_error_name((usbg_error)usbg_ret),
+                usbg_strerror((usbg_error)usbg_ret));
         goto out1;
     }
 
@@ -168,7 +168,7 @@ int initUSB() {
                 if (clean_ret != USBG_SUCCESS) {
                     fprintf(stderr, "usbg_disable_gadget failed (%s), "
                             "forcing UDC unbind via configfs\n",
-                            usbg_strerror(clean_ret));
+                            usbg_strerror((usbg_error)clean_ret));
                     /* Fallback: write directly to configfs to unbind the UDC */
                     char udc_path[512];
                     snprintf(udc_path, sizeof(udc_path),
@@ -185,7 +185,7 @@ int initUSB() {
                 if (clean_ret != USBG_SUCCESS) {
                     fprintf(stderr, "usbg_rm_gadget failed (%s), "
                             "forcing removal via configfs\n",
-                            usbg_strerror(clean_ret));
+                            usbg_strerror((usbg_error)clean_ret));
                     /* Fallback: remove the configfs directory */
                     char cmd[256];
                     snprintf(cmd, sizeof(cmd),
@@ -200,32 +200,32 @@ int initUSB() {
     usbg_ret = usbg_create_gadget(s, "pi400kb", &g_attrs, &g_strs, &g);
     if (usbg_ret != USBG_SUCCESS) {
         fprintf(stderr, "Error creating gadget\n");
-        fprintf(stderr, "Error: %s : %s\n", usbg_error_name(usbg_ret),
-                usbg_strerror(usbg_ret));
+        fprintf(stderr, "Error: %s : %s\n", usbg_error_name((usbg_error)usbg_ret),
+                usbg_strerror((usbg_error)usbg_ret));
         goto out2;
     }
 
     usbg_ret = usbg_create_function(g, USBG_F_HID, "usb0", &f_attrs, &f_hid);
     if (usbg_ret != USBG_SUCCESS) {
         fprintf(stderr, "Error creating function: USBG_F_HID\n");
-        fprintf(stderr, "Error: %s : %s\n", usbg_error_name(usbg_ret),
-                usbg_strerror(usbg_ret));
+        fprintf(stderr, "Error: %s : %s\n", usbg_error_name((usbg_error)usbg_ret),
+                usbg_strerror((usbg_error)usbg_ret));
         goto out2;
     }
 
     usbg_ret = usbg_create_config(g, 1, "config", NULL, &c_strs, &c);
     if (usbg_ret != USBG_SUCCESS) {
         fprintf(stderr, "Error creating config\n");
-        fprintf(stderr, "Error: %s : %s\n", usbg_error_name(usbg_ret),
-                usbg_strerror(usbg_ret));
+        fprintf(stderr, "Error: %s : %s\n", usbg_error_name((usbg_error)usbg_ret),
+                usbg_strerror((usbg_error)usbg_ret));
         goto out2;
     }
 
     usbg_ret = usbg_add_config_function(c, "keyboard", f_hid);
     if (usbg_ret != USBG_SUCCESS) {
         fprintf(stderr, "Error adding function: keyboard\n");
-        fprintf(stderr, "Error: %s : %s\n", usbg_error_name(usbg_ret),
-                usbg_strerror(usbg_ret));
+        fprintf(stderr, "Error: %s : %s\n", usbg_error_name((usbg_error)usbg_ret),
+                usbg_strerror((usbg_error)usbg_ret));
         goto out2;
     }
 
@@ -254,8 +254,8 @@ int initUSB() {
     usbg_ret = usbg_enable_gadget(g, DEFAULT_UDC);
     if (usbg_ret != USBG_SUCCESS) {
         fprintf(stderr, "Error enabling gadget\n");
-        fprintf(stderr, "Error: %s : %s\n", usbg_error_name(usbg_ret),
-                usbg_strerror(usbg_ret));
+        fprintf(stderr, "Error: %s : %s\n", usbg_error_name((usbg_error)usbg_ret),
+                usbg_strerror((usbg_error)usbg_ret));
         goto out2;
     }
 
