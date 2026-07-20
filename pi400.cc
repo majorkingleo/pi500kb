@@ -47,6 +47,7 @@ int uinput_mouse_fd;
 struct hid_buf mouse_buf;
 
 static bool keyboard_only = false;
+std::string hook_path = HOOK_PATH;
 
 void signal_handler(int /*dummy*/) {
     running = false;
@@ -68,7 +69,8 @@ bool modprobe_libcomposite() {
 }
 
 bool trigger_hook() {
-    auto cmd = std::format("{} {}", HOOK_PATH, grabbed.load() ? 1u : 0u);
+    if (hook_path.empty()) return false;
+    auto cmd = std::format("{} {}", hook_path, grabbed.load() ? 1u : 0u);
     std::system(cmd.c_str());
     return true;
 }
@@ -165,6 +167,8 @@ void print_usage(const char *prog) {
         "\n"
         "Other options:\n"
         "  -k, --keyboard-only     Skip mouse detection\n"
+        "  --hook-path <path>      Path to shell hook script called on\n"
+        "                          grab/release (default: " HOOK_PATH ")\n"
         "  -h, --help              Show this help message and exit\n"
         "\n"
         "Key bindings (when running):\n"
@@ -246,6 +250,8 @@ int main(int argc, char *argv[]) {
             keyboard_only = true;
         } else if (arg == "--all-keyboards") {
             all_keyboards = true;
+        } else if (arg == "--hook-path" && i + 1 < argc) {
+            hook_path = argv[++i];
         } else if (arg == "--keyboard" && i + 1 < argc) {
             keyboard_paths.emplace_back(argv[++i]);
         }
