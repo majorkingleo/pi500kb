@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.10)
 
 project(pi500kb)
 
@@ -85,6 +85,7 @@ add_executable(
     pi500kb
     pi500.cc
     gadget-hid.cc
+    keyqueue.cc
 )
 
 target_compile_definitions(pi500kb PRIVATE
