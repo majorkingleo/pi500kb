@@ -1,8 +1,8 @@
 [Unit]
-Description=pi400kb USB OTG Keyboard & Mouse forwarding
+Description=pi500kb USB OTG Keyboard & Mouse forwarding
 
 [Service]
-ExecStart=/usr/bin/pi400kb
+ExecStart=/usr/bin/pi500kb
 User=root   
 Group=root   
 Type=simple

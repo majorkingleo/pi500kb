@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.9)
 
-project(pi400kb)
+project(pi500kb)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -10,7 +10,7 @@ add_compile_definitions(_GNU_SOURCE)
 option(NO_OUTPUT "Disable USB HID output" OFF)
 
 if(NOT HOOK_PATH)
-    set(HOOK_PATH "/home/pi/pi400kb/hook.sh" CACHE STRING "Path to .sh toggle hook")
+    set(HOOK_PATH "/home/pi/pi500kb/hook.sh" CACHE STRING "Path to .sh toggle hook")
 endif()
 
 if(NOT KEYBOARD_VID)
@@ -82,12 +82,12 @@ find_library(libconfig libconfig)
 target_link_libraries(libusbgx INTERFACE config)
 
 add_executable(
-    pi400kb
-    pi400.cc
+    pi500kb
+    pi500.cc
     gadget-hid.cc
 )
 
-target_compile_definitions(pi400kb PRIVATE
+target_compile_definitions(pi500kb PRIVATE
     HAS_GADGET_SCHEMES
 
     HOOK_PATH="${HOOK_PATH}"
@@ -102,19 +102,19 @@ target_compile_definitions(pi400kb PRIVATE
 )
 
 if(NO_OUTPUT)
-    target_compile_definitions(pi400kb PRIVATE NO_OUTPUT)
+    target_compile_definitions(pi500kb PRIVATE NO_OUTPUT)
 endif()
 
-target_link_libraries(pi400kb libusbgx)
+target_link_libraries(pi500kb libusbgx)
 
 install(FILES
     ${CMAKE_CURRENT_LIST_DIR}/hook.sh
-    ${CMAKE_CURRENT_LIST_DIR}/pi400kb.service
+    ${CMAKE_CURRENT_LIST_DIR}/pi500kb.service
     ${CMAKE_CURRENT_LIST_DIR}/README.md
     DESTINATION .
 )
 
-install(TARGETS pi400kb DESTINATION .)
+install(TARGETS pi500kb DESTINATION .)
 
 set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
 set(CPACK_GENERATOR "ZIP" "TGZ")

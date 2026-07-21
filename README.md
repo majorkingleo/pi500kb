@@ -1,5 +1,9 @@
 # Pi 500 as a USB HID Keyboard
 
+*This is a fork of [pi400kb](https://github.com/Gadgetoid/pi400kb),*
+*adapted specifically for the Raspberry Pi 500, by heavily using*
+*AI DeepSeek Flash Coding Agent every where.*
+
 Turn your Raspberry Pi 500 into a USB keyboard for your PC. The Pi 500's built-in
 keyboard is forwarded to the host computer via the USB-C port.
 
@@ -9,7 +13,7 @@ keyboard is forwarded to the host computer via the USB-C port.
 ## How It Works
 
 The Pi 500's internal keyboard is a USB HID device connected internally via the
-RP1 southbridge. `pi400kb` reads raw HID reports from `/dev/hidraw0` and forwards
+RP1 southbridge. `pi500kb` reads raw HID reports from `/dev/hidraw0` and forwards
 them through a configfs-based USB HID gadget on the DWC2 controller (at
 `axi/usb@480000`). The host PC sees the Pi 500 as a standard USB HID keyboard
 with VID `2e8a` / PID `0010`.
@@ -49,7 +53,7 @@ ls /sys/class/udc/
 ### 2. The `g_ether` Conflict
 
 `rpi-usb-gadget` loads `g_ether` (USB Ethernet gadget) at boot, which claims the
-UDC. `pi400kb` **automatically detects and unloads `g_ether`** so the HID gadget
+UDC. `pi500kb` **automatically detects and unloads `g_ether`** so the HID gadget
 can take over — no manual steps needed.
 
 ## Building
@@ -63,15 +67,12 @@ sudo apt install libconfig-dev git cmake
 ### Build
 
 ```bash
-git clone https://github.com/Gadgetoid/pi400kb
-cd pi400kb
+git clone https://github.com/majorkingleo/pi500kb.git
+cd pi500kb
 git submodule update --init
 mkdir build
 cd build
-cmake .. \
-    -DKEYBOARD_VID=0x2e8a \
-    -DKEYBOARD_PID=0x0010 \
-    -DKEYBOARD_DEV=/dev/input/by-id/usb-Raspberry_Pi_Ltd_Pi_500_Keyboard-event-kbd
+cmake ..
 make -j$(nproc)
 ```
 
@@ -87,15 +88,15 @@ cd build && make -j$(nproc)
 ### Keyboard-Only Mode
 
 ```bash
-sudo build/pi400kb --keyboard-only
+sudo build/pi500kb --keyboard-only
 # or:
-sudo build/pi400kb -k
+sudo build/pi500kb -k
 ```
 
 ### Keyboard + Mouse Mode
 
 ```bash
-sudo build/pi400kb
+sudo build/pi500kb
 ```
 
 ### Key Bindings
@@ -111,10 +112,10 @@ release and use the Pi locally again.
 ## Autostart (systemd)
 
 ```bash
-sudo cp build/pi400kb /usr/bin/pi400kb
-sudo cp pi400kb.service /etc/systemd/system/
-sudo cp pi400kb.conf /etc/modules-load.d/
-sudo systemctl enable --now pi400kb.service
+sudo cp build/pi500kb /usr/bin/pi500kb
+sudo cp pi500kb.service /etc/systemd/system/
+sudo cp pi500kb.conf /etc/modules-load.d/
+sudo systemctl enable --now pi500kb.service
 ```
 
 ## Build Options
@@ -145,18 +146,18 @@ keyboard (`KEYBOARD_DEV`) is forwarded.
 
 ```bash
 # Forward a specific external keyboard
-sudo build/pi400kb --keyboard /dev/input/by-id/usb-My_Keyboard-event-kbd
+sudo build/pi500kb --keyboard /dev/input/by-id/usb-My_Keyboard-event-kbd
 
 # Forward multiple specific keyboards
-sudo build/pi400kb \
+sudo build/pi500kb \
     --keyboard /dev/input/by-id/usb-Keyboard_A-event-kbd \
     --keyboard /dev/input/by-id/usb-Keyboard_B-event-kbd
 
 # Auto-discover all keyboards (built-in + external)
-sudo build/pi400kb --all-keyboards
+sudo build/pi500kb --all-keyboards
 
 # All keyboards, no mouse
-sudo build/pi400kb --all-keyboards --keyboard-only
+sudo build/pi500kb --all-keyboards --keyboard-only
 ```
 
 ## Troubleshooting
@@ -166,11 +167,11 @@ sudo build/pi400kb --all-keyboards --keyboard-only
 1. **Cable:** The most common cause. Make sure the cable has **data lines**.
    Charge-only cables will power the Pi but won't transfer USB data.
    Test the cable by using it to transfer data between your phone and PC.
-2. **Replug:** Start `pi400kb`, then **unplug and replug the USB-C cable**.
+2. **Replug:** Start `pi500kb`, then **unplug and replug the USB-C cable**.
    This forces the host to re-enumerate the device (especially after switching
    from `g_ether` to the HID gadget).
 3. **Verify on host:** On the host PC, run `lsusb` — you should see
-   `Bus … Device …: ID 2e8a:0010` labelled "Pi400KB".
+   `Bus … Device …: ID 2e8a:0010` labelled "Pi500KB".
 4. **Check UDC state:** On the Pi, run:
    ```bash
    cat /sys/class/udc/1000480000.usb/state
@@ -180,12 +181,12 @@ sudo build/pi400kb --all-keyboards --keyboard-only
 
 ### USBG_ERROR_BUSY / duplicate gadget name
 
-A previous run left stale configfs state. `pi400kb` cleans up automatically,
+A previous run left stale configfs state. `pi500kb` cleans up automatically,
 but you can manually reset:
 
 ```bash
-echo "" | sudo tee /sys/kernel/config/usb_gadget/pi400kb/UDC 2>/dev/null
-sudo rm -rf /sys/kernel/config/usb_gadget/pi400kb
+echo "" | sudo tee /sys/kernel/config/usb_gadget/pi500kb/UDC 2>/dev/null
+sudo rm -rf /sys/kernel/config/usb_gadget/pi500kb
 sudo rm -rf /sys/kernel/config/usb_gadget/g1
 ```
 
@@ -211,8 +212,7 @@ Fixed in this version. If you see this, rebuild from the latest source.
 
 ## Credits
 
-Original gist by [Gadgetoid](https://github.com/Gadgetoid):
-https://gist.github.com/Gadgetoid/5a8ceb714de8e630059d30612503653f
+Original [pi400kb](https://github.com/Gadgetoid/pi400kb) by [Gadgetoid](https://github.com/Gadgetoid):
 
 Pi 500 port with auto-cleanup, `--keyboard-only` flag, and legacy `g_ether`
 module unloading by the community.

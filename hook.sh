@@ -1,5 +1,5 @@
 #!/bin/bash
-# Basic example pi400kb hook
+# Basic example pi500kb hook
 # This script is given the argument 1 for grabbed, 0 for ungrabbed.
 echo none > /sys/class/leds/PWR/trigger
 case $1 in
