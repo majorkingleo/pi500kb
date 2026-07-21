@@ -1,0 +1,7 @@
+{
+  "language": "UK",
+  "description": "UK keyboard — raw forwarding. No macros, no swaps. Host layout handles everything.",
+  "host_os": "windows",
+  "keycode_map": {},
+  "macros": []
+}
