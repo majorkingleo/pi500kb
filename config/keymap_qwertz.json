@@ -1,0 +1,10 @@
+{
+  "language": "QWERTZ swap",
+  "description": "Swap Y and Z keys (QWERTY → QWERTZ style). Also includes Italian symbol positions.",
+  "host_os": "any",
+  "keycode_map": {
+    "28": "29",
+    "29": "28"
+  },
+  "macros": []
+}

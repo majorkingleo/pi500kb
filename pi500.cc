@@ -333,10 +333,9 @@ int main(int argc, char *argv[]) {
     }
 
     if (host_os == "linux") {
-        std::cout << "Host OS: Linux — using Ctrl+Shift+U compose sequences (not yet implemented)" << std::endl;
-        std::cout << "Hint: set host keyboard layout to Italian for best results, or use --host-os windows" << std::endl;
+        std::cout << "Host OS: Linux — Ctrl+Shift+U compose not yet implemented, host layout method recommended" << std::endl;
     } else {
-        std::cout << "Host OS: Windows — using Alt+numpad sequences" << std::endl;
+        std::cout << "Host OS: Windows — AltGr macros use Alt+numpad sequences" << std::endl;
     }
     /* End of AI generated block */
 
@@ -451,9 +450,6 @@ int main(int argc, char *argv[]) {
 #endif
 
     std::cout << "Running..." << std::endl;
-    std::cout << "  To type Italian accented chars: hold RightAlt (or AltGr) + letter" << std::endl;
-    std::cout << "  e.g. AltGr+A = à, AltGr+E = è, AltGr+Shift+E = é" << std::endl;
-    std::cout << "  Press AltGr alone to see its modifier value in the debug output" << std::endl;
     running = true;
     signal(SIGINT, signal_handler);
 
