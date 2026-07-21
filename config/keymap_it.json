@@ -1,0 +1,683 @@
+{
+  "language": "Italian",
+  "description": "Italian QWERTY keyboard layout with AltGr+numpad macros for accented characters. Works on any host OS with Alt+numpad support (Windows). Trigger: RightAlt (AltGr, modifier bit 0x40) + letter key.",
+  "host_os": "windows",
+  "keycode_map": {
+    "53": "49",
+    "55": "54"
+  },
+  "macros": [
+    {
+      "comment": "A + AltGr \u2192 \u00e0",
+      "trigger": {
+        "modifiers": 64,
+        "keycode": 4,
+        "mod_mask": 64
+      },
+      "steps": [
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 20000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            90
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            90
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            92
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 0,
+          "keys": [],
+          "delay_us": 0
+        }
+      ]
+    },
+    {
+      "comment": "AltGr+Shift+A \u2192 \u00c0",
+      "trigger": {
+        "modifiers": 64,
+        "keycode": 4,
+        "mod_mask": 64
+      },
+      "steps": [
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 20000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            89
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            97
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            90
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 0,
+          "keys": [],
+          "delay_us": 0
+        }
+      ]
+    },
+    {
+      "comment": "E + AltGr \u2192 \u00e8",
+      "trigger": {
+        "modifiers": 64,
+        "keycode": 8,
+        "mod_mask": 64
+      },
+      "steps": [
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 20000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            90
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            91
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            90
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 0,
+          "keys": [],
+          "delay_us": 0
+        }
+      ]
+    },
+    {
+      "comment": "AltGr+Shift+E \u2192 \u00c8",
+      "trigger": {
+        "modifiers": 64,
+        "keycode": 8,
+        "mod_mask": 64
+      },
+      "steps": [
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 20000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            90
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            98
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            98
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 0,
+          "keys": [],
+          "delay_us": 0
+        }
+      ]
+    },
+    {
+      "comment": "E + AltGr \u2192 \u00e9",
+      "trigger": {
+        "modifiers": 64,
+        "keycode": 8,
+        "mod_mask": 64
+      },
+      "steps": [
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 20000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            90
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            91
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            91
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 0,
+          "keys": [],
+          "delay_us": 0
+        }
+      ]
+    },
+    {
+      "comment": "AltGr+Shift+E \u2192 \u00c9",
+      "trigger": {
+        "modifiers": 64,
+        "keycode": 8,
+        "mod_mask": 64
+      },
+      "steps": [
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 20000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            90
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            98
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            89
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 0,
+          "keys": [],
+          "delay_us": 0
+        }
+      ]
+    },
+    {
+      "comment": "I + AltGr \u2192 \u00ec",
+      "trigger": {
+        "modifiers": 64,
+        "keycode": 10,
+        "mod_mask": 64
+      },
+      "steps": [
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 20000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            90
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            91
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            94
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 0,
+          "keys": [],
+          "delay_us": 0
+        }
+      ]
+    },
+    {
+      "comment": "AltGr+Shift+I \u2192 \u00cc",
+      "trigger": {
+        "modifiers": 64,
+        "keycode": 10,
+        "mod_mask": 64
+      },
+      "steps": [
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 20000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            90
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            98
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            92
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 0,
+          "keys": [],
+          "delay_us": 0
+        }
+      ]
+    },
+    {
+      "comment": "O + AltGr \u2192 \u00f2",
+      "trigger": {
+        "modifiers": 64,
+        "keycode": 18,
+        "mod_mask": 64
+      },
+      "steps": [
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 20000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            90
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            92
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            90
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 0,
+          "keys": [],
+          "delay_us": 0
+        }
+      ]
+    },
+    {
+      "comment": "AltGr+Shift+O \u2192 \u00d2",
+      "trigger": {
+        "modifiers": 64,
+        "keycode": 18,
+        "mod_mask": 64
+      },
+      "steps": [
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 20000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            90
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            89
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            98
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 0,
+          "keys": [],
+          "delay_us": 0
+        }
+      ]
+    },
+    {
+      "comment": "U + AltGr \u2192 \u00f9",
+      "trigger": {
+        "modifiers": 64,
+        "keycode": 21,
+        "mod_mask": 64
+      },
+      "steps": [
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 20000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            90
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            92
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            97
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 0,
+          "keys": [],
+          "delay_us": 0
+        }
+      ]
+    },
+    {
+      "comment": "AltGr+Shift+U \u2192 \u00d9",
+      "trigger": {
+        "modifiers": 64,
+        "keycode": 21,
+        "mod_mask": 64
+      },
+      "steps": [
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 20000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            90
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            89
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 4,
+          "keys": [
+            95
+          ],
+          "delay_us": 15000
+        },
+        {
+          "modifier": 4,
+          "keys": [],
+          "delay_us": 10000
+        },
+        {
+          "modifier": 0,
+          "keys": [],
+          "delay_us": 0
+        }
+      ]
+    }
+  ]
+}

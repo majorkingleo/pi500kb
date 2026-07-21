@@ -101,7 +101,7 @@ int initUSB() {
 
     struct usbg_gadget_strs g_strs = {
         .manufacturer = const_cast<char *>("Gadgetoid"), /* Manufacturer */
-        .product = const_cast<char *>("Pi400KB"),        /* Product string */
+        .product = const_cast<char *>("Pi500KB"),        /* Product string */
         .serial = const_cast<char *>("0123456789")       /* Serial number */
     };
 
@@ -198,7 +198,7 @@ int initUSB() {
         }
     }
 
-    usbg_ret = usbg_create_gadget(s, "pi400kb", &g_attrs, &g_strs, &g);
+    usbg_ret = usbg_create_gadget(s, "pi500kb", &g_attrs, &g_strs, &g);
     if (usbg_ret != USBG_SUCCESS) {
         std::cerr << "Error creating gadget" << std::endl;
         std::cerr << std::format("Error: {} : {}\n",
@@ -267,7 +267,8 @@ int initUSB() {
     }
 
     /* Trigger soft_connect to ensure the gadget is visible to the host.
-     * On DWC2/RP1, the gadget may need an explicit connect pulse. */
+     * On DWC2/RP1, the gadget may need an explicit connect pulse.
+     * Kernel expects "1" to connect (some older kernels use "connect"). */
     {
         const char *udc_name = usbg_get_udc_name(
             usbg_get_gadget_udc(g));
@@ -275,7 +276,7 @@ int initUSB() {
             auto sc_path = std::format("/sys/class/udc/{}/soft_connect", udc_name);
             std::ofstream sc_file(sc_path);
             if (sc_file.is_open()) {
-                sc_file << "connect\n";
+                sc_file << "1\n";
                 sc_file.close();
             }
         }

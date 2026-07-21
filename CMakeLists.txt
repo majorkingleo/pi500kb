@@ -106,6 +106,9 @@ if(NO_OUTPUT)
     target_compile_definitions(pi500kb PRIVATE NO_OUTPUT)
 endif()
 
+target_include_directories(pi500kb PRIVATE ${CMAKE_CURRENT_LIST_DIR}/third-party/json/single_include)
+target_include_directories(pi500kb PRIVATE ${CMAKE_CURRENT_LIST_DIR}/config)
+
 target_link_libraries(pi500kb libusbgx)
 
 install(FILES
@@ -116,6 +119,8 @@ install(FILES
 )
 
 install(TARGETS pi500kb DESTINATION .)
+
+install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/config/ DESTINATION config)
 
 set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
 set(CPACK_GENERATOR "ZIP" "TGZ")
